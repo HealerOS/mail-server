@@ -1,4 +1,4 @@
-name: Rust
+name: Rust CI
 
 on:
   push:
@@ -8,19 +8,58 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  RUSTFLAGS: "-Dwarnings"
 
 jobs:
-  build:
-    
+  test:
+    name: 测试和检查
     runs-on: ubuntu-latest
-
     steps:
-    - uses: actions/checkout@v4
-    - name: 格式化
-      run: cargo fmt
-    - name: Build
-      run: cargo build --verbose
-    - name: Run tests
-      run: cargo test --verbose
-    - name: 安全
-      run: cargo audit
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+
+      - name: 检查代码格式
+        run: cargo fmt --all -- --check
+
+      - name: 运行 Clippy
+        run: cargo clippy --all-targets --all-features
+
+      - name: 运行测试
+        run: cargo test --all-features
+
+      - name: 检查文档
+        run: cargo doc --no-deps --all-features
+
+      - name: 运行基准测试
+        run: cargo bench --no-run
+
+      - name: 构建发布版本
+        run: cargo build --release --all-features
+
+  coverage:
+    name: 代码覆盖率
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: 安装 cargo-tarpaulin
+        run: cargo install cargo-tarpaulin
+      - name: 运行 Tarpaulin
+        run: cargo tarpaulin --out Html
+      # - name: 上传到 Codecov
+      #   uses: codecov/codecov-action@v3
+
+  security_audit:
+    name: 安全审计
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: 安装 cargo-audit
+        run: cargo install cargo-audit
+      - name: 运行 cargo-audit
+        run: cargo audit
