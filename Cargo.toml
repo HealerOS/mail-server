@@ -2,5 +2,19 @@
 name = "mail-server"
 version = "0.1.0"
 edition = "2021"
+authors = ["jason gao"]
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+path = "src/main.rs"
+name = "mail-server"
 
 [dependencies]
+actix-web = "4.9.0"
+tokio = { version = "1.40.0", features = ["macros", "rt-multi-thread"] }
+
+
+[dev-dependencies]
+reqwest = "0.12.8"

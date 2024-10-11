@@ -1,5 +1,9 @@
+use mail_server::new_server;
+use std::net::TcpListener;
+
 #[warn(clippy::all, clippy::pedantic)]
-fn main() {
-    println!("Hello, world!");
-    println!("Hello, world!");
+#[tokio::main]
+async fn main() -> std::io::Result<()> {
+    let listener = TcpListener::bind("127.0.0.1:8080")?;
+    new_server(listener)?.await
 }
