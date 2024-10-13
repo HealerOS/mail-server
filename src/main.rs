@@ -1,6 +1,6 @@
 use mail_server::configuration::get_config;
 use mail_server::startup::new_server;
-use sqlx::{Connection, PgPool};
+use sqlx::PgPool;
 use std::net::TcpListener;
 
 #[warn(clippy::all, clippy::pedantic)]

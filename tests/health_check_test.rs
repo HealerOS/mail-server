@@ -75,7 +75,6 @@ mod tests {
     }
     pub struct TestApp {
         pub address: String,
-        pub db_pool: PgPool,
     }
 
     async fn spawn_app() -> TestApp {
@@ -89,7 +88,6 @@ mod tests {
         tokio::spawn(server);
         TestApp {
             address: format!("http://127.0.0.1:{}", port),
-            db_pool: db_connection_pool,
         }
     }
 
