@@ -29,4 +29,10 @@ impl DBSettings {
             self.username, self.password, self.host, self.port, self.database,
         )
     }
+    pub fn connection_url_without_db(&self) -> String {
+        format!(
+            "postgres://{}:{}@{}:{}",
+            self.username, self.password, self.host, self.port,
+        )
+    }
 }

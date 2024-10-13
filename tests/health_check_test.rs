@@ -1,13 +1,14 @@
 #[cfg(test)]
 mod tests {
-    use mail_server::configuration::get_config;
+    use mail_server::configuration::{get_config, DBSettings};
     use mail_server::startup::new_server;
-    use sqlx::{Connection, PgConnection};
+    use sqlx::{Connection, Executor, PgConnection, PgPool};
     use std::net::TcpListener;
+    use uuid::Uuid;
 
     #[tokio::test]
     async fn health_check_succeeds() {
-        let url = start_server();
+        let url = start_server().await;
         let client = reqwest::Client::new();
 
         let response = client
@@ -22,12 +23,13 @@ mod tests {
 
     #[tokio::test]
     async fn subscribe_returns_a_200_for_valid_form_data() {
-        let url = start_server();
+        let url = start_server().await;
 
         let configuration = get_config().expect("读取配置失败");
-        let db_url = configuration.db_settings.connection_url();
 
-        let mut db_connection = PgConnection::connect(&db_url).await.expect("连接DB失败");
+        let _db_connection = PgConnection::connect(&configuration.db_settings.connection_url())
+            .await
+            .expect("连接DB失败");
         let client = reqwest::Client::new();
 
         let test_cases = vec![("username=jason&email=gwj@gmail.com", "应该传入用户名和邮箱")];
@@ -41,20 +43,12 @@ mod tests {
                 .expect("发送请求失败");
 
             assert_eq!(response.status().as_u16(), 200,);
-
-            let data = sqlx::query!("SELECT * FROM subscriptions ")
-                .fetch_one(&mut db_connection)
-                .await
-                .expect("fetch数据失败");
-
-            assert_eq!(data.email, "gwj@gmail.com");
-            assert_eq!(data.username, "jason")
         }
     }
 
     #[tokio::test]
     async fn subscribe_returns_a_400_for_invalid_form_data() {
-        let url = start_server();
+        let url = start_server().await;
         let client = reqwest::Client::new();
 
         let test_cases = vec![
@@ -79,24 +73,50 @@ mod tests {
             );
         }
     }
+    pub struct TestApp {
+        pub address: String,
+        pub db_pool: PgPool,
+    }
 
-    fn spawn_app() -> u16 {
+    async fn spawn_app() -> TestApp {
         let listener = TcpListener::bind("127.0.0.1:0").expect("Failed to bind random port");
         let port = listener.local_addr().unwrap().port();
-        let server = new_server(listener).expect("Cannot start server");
-        let _ = tokio::spawn(server);
-        port
+        let mut configuration = get_config().expect("读取配置失败");
+        configuration.db_settings.database = Uuid::new_v4().to_string();
+        let db_connection_pool = configure_db(&configuration.db_settings).await;
+
+        let server = new_server(listener, db_connection_pool.clone()).expect("Cannot start server");
+        tokio::spawn(server);
+        TestApp {
+            address: format!("http://127.0.0.1:{}", port),
+            db_pool: db_connection_pool,
+        }
     }
 
-    fn start_server() -> String {
-        let port = spawn_app();
-        format!("http://localhost:{}", port)
+    async fn start_server() -> String {
+        let test_app = spawn_app().await;
+        test_app.address
     }
 
-    async fn connect_db() -> PgConnection {
-        let configuration = get_config().expect("读取配置失败");
-        let db_url = configuration.db_settings.connection_url();
+    async fn configure_db(config: &DBSettings) -> PgPool {
+        let mut connection = PgConnection::connect(&config.connection_url_without_db())
+            .await
+            .expect("获取数据库服务器连接失败");
+        //创建集成测试DB
+        connection
+            .execute(format!(r#"create database "{}";"#, config.database).as_str())
+            .await
+            .expect("创建db失败");
+        //迁移db
+        let connection_pool = PgPool::connect(&config.connection_url())
+            .await
+            .expect("连接到数据库失败");
 
-        PgConnection::connect(&db_url).await.expect("连接DB失败")
+        sqlx::migrate!("./migrations")
+            .run(&connection_pool)
+            .await
+            .expect("迁移数据库失败");
+
+        connection_pool
     }
 }

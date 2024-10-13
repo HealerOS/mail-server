@@ -1,5 +1,3 @@
-SET search_path TO dev;
-
 create table subscriptions
 (
     id            uuid         not null,
