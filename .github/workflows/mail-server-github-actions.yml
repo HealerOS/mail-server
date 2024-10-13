@@ -9,7 +9,7 @@ on:
 env:
   CARGO_TERM_COLOR: always
   RUSTFLAGS: "-Dwarnings"
-  DATABASE_URL: "postgres://postgres:password@localhost:5432/mail-server"
+  DATABASE_URL: "postgres://postgres:postgres@localhost:5432/mail-server"
 
 jobs:
   test:
