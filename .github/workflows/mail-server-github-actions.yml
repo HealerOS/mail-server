@@ -9,17 +9,40 @@ on:
 env:
   CARGO_TERM_COLOR: always
   RUSTFLAGS: "-Dwarnings"
+  DATABASE_URL: "postgres://postgres:password@localhost:5432/mail-server"
 
 jobs:
   test:
     name: 测试和检查
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: mail-server
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
+
+      - name: 安装 sqlx-cli
+        run: cargo install sqlx-cli --no-default-features --features postgres
+
+      - name: 运行数据库迁移
+        run: sqlx database create && sqlx migrate run
 
       - name: 检查代码格式
         run: cargo fmt --all -- --check
@@ -42,10 +65,32 @@ jobs:
   coverage:
     name: 代码覆盖率
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: mail_server_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+
+      - name: 安装 sqlx-cli
+        run: cargo install sqlx-cli --no-default-features --features postgres
+
+      - name: 运行数据库迁移
+        run: sqlx database create && sqlx migrate run
 
       - name: 安装 cargo-tarpaulin
         run: cargo install cargo-tarpaulin
@@ -58,8 +103,6 @@ jobs:
         with:
           name: coverage-report
           path: tarpaulin-report.html
-      # - name: 上传到 Codecov
-      #   uses: codecov/codecov-action@v3
 
   security_audit:
     name: 安全审计
