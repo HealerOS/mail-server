@@ -1,0 +1,16 @@
+FROM rust:latest
+
+WORKDIR /usr/src/app
+
+# 复制 Cargo.toml 和 Cargo.lock
+COPY Cargo.toml Cargo.lock ./
+
+# 复制源代码
+COPY src ./src
+COPY migrations ./migrations
+
+# 安装 sqlx-cli
+RUN cargo install sqlx-cli --no-default-features --features postgres
+
+# 运行迁移
+CMD ["sqlx", "migrate", "run"]
