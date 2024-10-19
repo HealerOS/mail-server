@@ -1,8 +1,12 @@
+use crate::model::common_response::CommonResponse;
+use crate::orm_model::subscriptions;
 use actix_web::web::Form;
 use actix_web::{web, HttpResponse};
+use chrono::Utc;
+use sea_orm::prelude::DateTimeWithTimeZone;
+use sea_orm::{ActiveModelTrait, ActiveValue, DatabaseConnection, DbErr};
 use serde::Deserialize;
-use sqlx::types::chrono::Utc;
-use sqlx::PgPool;
+use tracing::{error, info, warn};
 use uuid::Uuid;
 
 #[derive(Debug, Deserialize)]
@@ -11,33 +15,36 @@ pub struct UserInfo {
     email: String,
 }
 
+#[tracing::instrument(name = "正在添加订阅", skip(db))]
 pub async fn subscribe(
     user_info: Form<UserInfo>,
-    connection_pool: web::Data<PgPool>,
+    db: web::Data<DatabaseConnection>,
 ) -> HttpResponse {
-    println!("{:?}", user_info);
-
-    match sqlx::query!(
-        r#"
-        INSERT INTO subscriptions (id,username, email,subscribed_at)
-        VALUES ($1,$2,$3,$4)
-        "#,
-        Uuid::new_v4(),
-        user_info.username,
-        user_info.email,
-        //todo 这里时间好像没有带时区就插入了
-        Utc::now()
-    )
-    .execute(connection_pool.get_ref())
-    .await
-    {
-        Ok(_) => {
-            println!("插入成功：{:?}！", user_info);
-            HttpResponse::Ok().finish()
-        }
+    match insert_subscriber(user_info, db.clone()).await {
+        Ok(_) => HttpResponse::Ok().json(CommonResponse::<String>::success_response_without_data()),
         Err(e) => {
-            println!("插入失败，error:{}", e);
+            error!("error: {}", e);
             HttpResponse::InternalServerError().finish()
         }
     }
+}
+
+#[tracing::instrument(name = "正在保存订阅者到DB", skip(db))]
+pub async fn insert_subscriber(
+    user_info: Form<UserInfo>,
+    db: web::Data<DatabaseConnection>,
+) -> Result<(), DbErr> {
+    warn!("这里应该插入DB");
+    let subscription_user = subscriptions::ActiveModel {
+        id: ActiveValue::Set(Uuid::new_v4()),
+        email: ActiveValue::Set(user_info.email.clone()),
+        username: ActiveValue::Set(user_info.username.clone()),
+        subscribed_at: ActiveValue::Set(DateTimeWithTimeZone::from(Utc::now())),
+    };
+
+    let res = subscription_user.clone().insert(db.get_ref()).await?;
+
+    assert_eq!(subscription_user.id.unwrap(), res.id);
+    info!("订阅成功,id:{:?}", res.id);
+    Ok(())
 }

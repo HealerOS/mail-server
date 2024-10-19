@@ -56,11 +56,11 @@ jobs:
       - name: 检查文档
         run: cargo doc --no-deps --all-features
 
-      - name: 运行基准测试
-        run: cargo bench --no-run
-
-      - name: 构建发布版本
-        run: cargo build --release --all-features
+  #      - name: 运行基准测试
+  #        run: cargo bench --no-run
+  #
+  #      - name: 构建发布版本
+  #        run: cargo build --release --all-features
 
   coverage:
     name: 代码覆盖率

@@ -1,10 +1,14 @@
 #[cfg(test)]
 mod tests {
+    use fake::faker::internet::en::{FreeEmail, Username};
+    use fake::Fake;
     use mail_server::configuration::{get_config, DBSettings};
     use mail_server::startup::new_server;
-    use sqlx::{Connection, Executor, PgConnection, PgPool};
+    use mail_server::telemetry::{get_subscriber, init_subscriber};
+    use once_cell::sync::Lazy;
+    use sea_orm::{Database, DatabaseConnection};
+    use secrecy::ExposeSecret;
     use std::net::TcpListener;
-    use uuid::Uuid;
 
     #[tokio::test]
     async fn health_check_succeeds() {
@@ -25,14 +29,15 @@ mod tests {
     async fn subscribe_returns_a_200_for_valid_form_data() {
         let url = start_server().await;
 
-        let configuration = get_config().expect("读取配置失败");
-
-        let _db_connection = PgConnection::connect(&configuration.db_settings.connection_url())
-            .await
-            .expect("连接DB失败");
         let client = reqwest::Client::new();
+        //生成一个随机的符合规范的用户名和邮箱
+        let test_username: String = Username().fake();
+        let test_email: String = FreeEmail().fake();
 
-        let test_cases = vec![("username=jason&email=gwj@gmail.com", "应该传入用户名和邮箱")];
+        let test_cases = vec![(
+            format!("username={}&email={}", test_username, test_email),
+            "应该传入用户名和邮箱",
+        )];
         for (invalid_body, _error_message) in test_cases {
             let response = client
                 .post(format!("{}/subscribe", url))
@@ -76,15 +81,19 @@ mod tests {
     pub struct TestApp {
         pub address: String,
     }
+    static TRACING: Lazy<()> = Lazy::new(|| {
+        let subscriber = get_subscriber("mail-server-test".to_string(), "debug".to_string());
+        init_subscriber(subscriber);
+    });
 
     async fn spawn_app() -> TestApp {
+        Lazy::force(&TRACING);
         let listener = TcpListener::bind("127.0.0.1:0").expect("Failed to bind random port");
         let port = listener.local_addr().unwrap().port();
-        let mut configuration = get_config().expect("读取配置失败");
-        configuration.db_settings.database = Uuid::new_v4().to_string();
-        let db_connection_pool = configure_db(&configuration.db_settings).await;
+        let configuration = get_config().expect("读取配置失败");
+        let db = configure_db(&configuration.db_settings).await;
 
-        let server = new_server(listener, db_connection_pool.clone()).expect("Cannot start server");
+        let server = new_server(listener, db.clone()).expect("Cannot start server");
         tokio::spawn(server);
         TestApp {
             address: format!("http://127.0.0.1:{}", port),
@@ -96,25 +105,9 @@ mod tests {
         test_app.address
     }
 
-    async fn configure_db(config: &DBSettings) -> PgPool {
-        let mut connection = PgConnection::connect(&config.connection_url_without_db())
+    async fn configure_db(config: &DBSettings) -> DatabaseConnection {
+        Database::connect(config.connection_url().expose_secret())
             .await
-            .expect("获取数据库服务器连接失败");
-        //创建集成测试DB
-        connection
-            .execute(format!(r#"create database "{}";"#, config.database).as_str())
-            .await
-            .expect("创建db失败");
-        //迁移db
-        let connection_pool = PgPool::connect(&config.connection_url())
-            .await
-            .expect("连接到数据库失败");
-
-        sqlx::migrate!("./migrations")
-            .run(&connection_pool)
-            .await
-            .expect("迁移数据库失败");
-
-        connection_pool
+            .expect("数据库连接失败")
     }
 }
