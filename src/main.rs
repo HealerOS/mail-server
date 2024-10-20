@@ -4,6 +4,7 @@ use mail_server::telemetry::{get_subscriber, init_subscriber};
 use sea_orm::Database;
 use secrecy::ExposeSecret;
 use std::net::TcpListener;
+use tracing::info;
 
 #[warn(clippy::all, clippy::pedantic)]
 #[tokio::main]
@@ -14,6 +15,7 @@ async fn main() -> std::io::Result<()> {
 
     let system_config = get_config().expect("读取系统配置失败");
 
+    info!("系统配置是:{:?}", system_config);
     let db = Database::connect(system_config.db_settings.connection_url().expose_secret())
         .await
         .unwrap_or_else(|e| {

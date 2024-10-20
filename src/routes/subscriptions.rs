@@ -6,7 +6,7 @@ use chrono::Utc;
 use sea_orm::prelude::DateTimeWithTimeZone;
 use sea_orm::{ActiveModelTrait, ActiveValue, DatabaseConnection, DbErr};
 use serde::Deserialize;
-use tracing::{error, info, warn};
+use tracing::{error, info};
 use uuid::Uuid;
 
 #[derive(Debug, Deserialize)]
@@ -34,7 +34,6 @@ pub async fn insert_subscriber(
     user_info: Form<UserInfo>,
     db: web::Data<DatabaseConnection>,
 ) -> Result<(), DbErr> {
-    warn!("这里应该插入DB");
     let subscription_user = subscriptions::ActiveModel {
         id: ActiveValue::Set(Uuid::new_v4()),
         email: ActiveValue::Set(user_info.email.clone()),
