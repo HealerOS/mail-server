@@ -59,6 +59,8 @@ mod tests {
         let test_cases = vec![
             ("username=jason", "没有邮箱！"),
             ("email=gwj@gmail.com", "没有用户名！"),
+            ("username=&email=gwj@gmail.com", "用户名不合法"),
+            ("username=jason&email=@gmail.com", "邮箱不合法"),
             ("", "啥也没有！"),
         ];
         for (invalid_body, error_message) in test_cases {

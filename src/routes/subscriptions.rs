@@ -1,5 +1,5 @@
 use crate::domain::new_subscriber::NewSubscriber;
-use crate::domain::subscriber_name::SubscriberUserName;
+
 use crate::model::common_response::CommonResponse;
 use crate::orm_model::subscriptions;
 use actix_web::web::Form;
@@ -13,8 +13,8 @@ use uuid::Uuid;
 
 #[derive(Debug, Deserialize)]
 pub struct UserInfo {
-    username: String,
-    email: String,
+    pub username: String,
+    pub email: String,
 }
 
 #[tracing::instrument(name = "正在添加订阅", skip(db))]
@@ -22,17 +22,12 @@ pub async fn subscribe(
     user_info: Form<UserInfo>,
     db: web::Data<DatabaseConnection>,
 ) -> HttpResponse {
-    let subscriber_username = match SubscriberUserName::parse(user_info.0.username) {
-        Ok(name) => name,
+    let new_subscriber = match NewSubscriber::try_from(user_info) {
+        Ok(subscriber) => subscriber,
         Err(e) => {
-            error!("姓名校验失败:{}", e);
+            error!("校验信息失败：e{}", e);
             return HttpResponse::BadRequest().json(CommonResponse::error_response(e));
         }
-    };
-
-    let new_subscriber = NewSubscriber {
-        email: user_info.0.email,
-        username: subscriber_username,
     };
 
     match insert_subscriber(new_subscriber, db.clone()).await {
@@ -51,7 +46,7 @@ pub async fn insert_subscriber(
 ) -> Result<(), DbErr> {
     let subscription_user = subscriptions::ActiveModel {
         id: ActiveValue::Set(Uuid::new_v4()),
-        email: ActiveValue::Set(new_subscriber.email),
+        email: ActiveValue::Set(new_subscriber.email.as_ref().to_owned()),
         username: ActiveValue::Set(new_subscriber.username.as_ref().to_string()),
         subscribed_at: ActiveValue::Set(DateTimeWithTimeZone::from(Utc::now())),
     };

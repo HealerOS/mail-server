@@ -18,9 +18,10 @@ serde = { version = "1.0.210", features = ["derive"] }
 config = "0.14.0"
 uuid = { version = "1.10.0", features = ["v4"] }
 chrono = "0.4.38"
-fake = "2.10.0"
-
-
+fake = "~2.3"
+validator = "0.18.1"
+quickcheck = "0.9.2"
+quickcheck_macros = "0.9.1"
 #错误处理
 anyhow = "1.0.90"
 thiserror = "1.0.64"
@@ -28,6 +29,7 @@ thiserror = "1.0.64"
 #更好的断言
 claim = "0.5.0"
 
+rand = "0.8.5"
 
 #DB
 sea-orm = { version = "1.1.0", features = ["sqlx-postgres", "runtime-tokio-rustls", "macros", "debug-print"] }
