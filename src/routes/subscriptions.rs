@@ -1,3 +1,5 @@
+use crate::domain::new_subscriber::NewSubscriber;
+use crate::domain::subscriber_name::SubscriberUserName;
 use crate::model::common_response::CommonResponse;
 use crate::orm_model::subscriptions;
 use actix_web::web::Form;
@@ -20,8 +22,21 @@ pub async fn subscribe(
     user_info: Form<UserInfo>,
     db: web::Data<DatabaseConnection>,
 ) -> HttpResponse {
-    match insert_subscriber(user_info, db.clone()).await {
-        Ok(_) => HttpResponse::Ok().json(CommonResponse::<String>::success_response_without_data()),
+    let subscriber_username = match SubscriberUserName::parse(user_info.0.username) {
+        Ok(name) => name,
+        Err(e) => {
+            error!("姓名校验失败:{}", e);
+            return HttpResponse::BadRequest().json(CommonResponse::error_response(e));
+        }
+    };
+
+    let new_subscriber = NewSubscriber {
+        email: user_info.0.email,
+        username: subscriber_username,
+    };
+
+    match insert_subscriber(new_subscriber, db.clone()).await {
+        Ok(_) => HttpResponse::Ok().json(CommonResponse::success_response_without_data()),
         Err(e) => {
             error!("error: {}", e);
             HttpResponse::InternalServerError().finish()
@@ -31,13 +46,13 @@ pub async fn subscribe(
 
 #[tracing::instrument(name = "正在保存订阅者到DB", skip(db))]
 pub async fn insert_subscriber(
-    user_info: Form<UserInfo>,
+    new_subscriber: NewSubscriber,
     db: web::Data<DatabaseConnection>,
 ) -> Result<(), DbErr> {
     let subscription_user = subscriptions::ActiveModel {
         id: ActiveValue::Set(Uuid::new_v4()),
-        email: ActiveValue::Set(user_info.email.clone()),
-        username: ActiveValue::Set(user_info.username.clone()),
+        email: ActiveValue::Set(new_subscriber.email),
+        username: ActiveValue::Set(new_subscriber.username.as_ref().to_string()),
         subscribed_at: ActiveValue::Set(DateTimeWithTimeZone::from(Utc::now())),
     };
 

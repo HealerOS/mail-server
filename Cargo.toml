@@ -20,6 +20,15 @@ uuid = { version = "1.10.0", features = ["v4"] }
 chrono = "0.4.38"
 fake = "2.10.0"
 
+
+#错误处理
+anyhow = "1.0.90"
+thiserror = "1.0.64"
+
+#更好的断言
+claim = "0.5.0"
+
+
 #DB
 sea-orm = { version = "1.1.0", features = ["sqlx-postgres", "runtime-tokio-rustls", "macros", "debug-print"] }
 
@@ -32,7 +41,6 @@ tracing-actix-web = "0.7.14"
 
 
 secrecy = { version = "0.10.3", features = ["serde"] }
-rand = "0.8.5"
 
 #[dependencies.sqlx]
 #version = "0.6"

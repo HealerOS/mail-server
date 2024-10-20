@@ -1,3 +1,4 @@
+use crate::exception::biz_exception::BizError;
 use serde::Serialize;
 
 #[derive(Serialize)]
@@ -15,7 +16,17 @@ impl<T> CommonResponse<T> {
             data,
         }
     }
-    pub fn success_response_without_data() -> CommonResponse<T> {
+}
+
+impl CommonResponse<String> {
+    pub fn error_response(err: BizError) -> CommonResponse<String> {
+        CommonResponse {
+            code: 500,
+            msg: err.to_string(),
+            data: None,
+        }
+    }
+    pub fn success_response_without_data() -> CommonResponse<String> {
         Self::success_response(None)
     }
 }
