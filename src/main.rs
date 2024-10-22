@@ -1,5 +1,6 @@
-use mail_server::configuration::get_config;
-use mail_server::startup::new_server;
+use mail_server::biz::email_client::EmailClint;
+use mail_server::boot::server::new_server;
+use mail_server::config::system_config::get_config;
 use mail_server::telemetry::{get_subscriber, init_subscriber};
 use sea_orm::Database;
 use secrecy::ExposeSecret;
@@ -30,5 +31,12 @@ async fn main() -> std::io::Result<()> {
         "{}:{}",
         system_config.application_config.host, system_config.application_config.port
     ))?;
-    new_server(listener, db)?.await
+    let sender_email = system_config
+        .email_config
+        .sender_email()
+        .expect("获取发送者email失败");
+
+    let email_client = EmailClint::new(system_config.email_config.base_url, sender_email);
+
+    new_server(listener, db, email_client)?.await
 }

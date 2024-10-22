@@ -1,3 +1,5 @@
+use crate::domain::subscriber_email::SubscriberEmail;
+use crate::exception::biz_exception::BizResult;
 use secrecy::{ExposeSecret, SecretString};
 use std::env;
 use tracing::info;
@@ -6,7 +8,14 @@ use tracing::info;
 pub struct SystemSettings {
     pub db_settings: DBSettings,
     pub application_config: ApplicationConfig,
+    pub email_config: EmailConfig,
 }
+#[derive(serde::Deserialize, Debug)]
+pub struct EmailConfig {
+    pub base_url: String,
+    pub sender_email: String,
+}
+
 #[derive(serde::Deserialize, Debug)]
 pub struct ApplicationConfig {
     pub host: String,
@@ -53,5 +62,11 @@ impl DBSettings {
         }
         info!("Database URL: {}", db_url);
         SecretString::from(db_url)
+    }
+}
+
+impl EmailConfig {
+    pub fn sender_email(&self) -> BizResult<SubscriberEmail> {
+        SubscriberEmail::parse(self.sender_email.clone())
     }
 }

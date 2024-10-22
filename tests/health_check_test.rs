@@ -2,8 +2,10 @@
 mod tests {
     use fake::faker::internet::en::{FreeEmail, Username};
     use fake::Fake;
-    use mail_server::configuration::{get_config, DBSettings};
-    use mail_server::startup::new_server;
+
+    use mail_server::biz::email_client::EmailClint;
+    use mail_server::boot::server::new_server;
+    use mail_server::config::system_config::{get_config, DBSettings};
     use mail_server::telemetry::{get_subscriber, init_subscriber};
     use once_cell::sync::Lazy;
     use sea_orm::{Database, DatabaseConnection};
@@ -95,7 +97,14 @@ mod tests {
         let configuration = get_config().expect("读取配置失败");
         let db = configure_db(&configuration.db_settings).await;
 
-        let server = new_server(listener, db.clone()).expect("Cannot start server");
+        let sender_email = configuration
+            .email_config
+            .sender_email()
+            .expect("获取发送者email失败");
+
+        let email_client = EmailClint::new(configuration.email_config.base_url, sender_email);
+
+        let server = new_server(listener, db, email_client).expect("Cannot start server");
         tokio::spawn(server);
         TestApp {
             address: format!("http://127.0.0.1:{}", port),
