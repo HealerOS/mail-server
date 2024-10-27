@@ -1,5 +1,5 @@
-mod model;
-pub mod orm_model;
+mod common;
+pub mod model;
 pub mod routes;
 
 pub mod biz;

@@ -1,5 +1,5 @@
 application_config:
-  port: 8080
+  port: 15000
 db_settings:
   host: "localhost"
   port: 5432
@@ -9,3 +9,5 @@ db_settings:
 email_config:
   base_url: "localhost"
   sender_email: "test@gmail.com"
+  authorization_token: "my-secret-token"
+  timeout_milliseconds: 3000

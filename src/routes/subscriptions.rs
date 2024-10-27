@@ -1,7 +1,7 @@
 use crate::domain::new_subscriber::NewSubscriber;
 
-use crate::model::common_response::CommonResponse;
-use crate::orm_model::subscriptions;
+use crate::common::common_response::CommonResponse;
+use crate::model::subscriptions;
 use actix_web::web::Form;
 use actix_web::{web, HttpResponse};
 use chrono::Utc;
