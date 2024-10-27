@@ -18,7 +18,10 @@ impl MigrationTrait for Migration {
             .table(Subscriptions::Table)
             .add_column_if_not_exists(
                 ColumnDef::new(Subscriptions::Status)
-                    .enumeration(StatusEnum, StatusVariants::iter()),
+                    .enumeration(StatusEnum, StatusVariants::iter())
+                    .not_null()
+                    .comment("用户的订阅状态")
+                    .default("Waiting"),
             )
             .to_owned();
 
@@ -49,7 +52,9 @@ struct StatusEnum;
 
 #[derive(DeriveIden, EnumIter)]
 enum StatusVariants {
+    #[sea_orm(iden = "Waiting")]
     Waiting,
+    #[sea_orm(iden = "Confirmed")]
     Confirmed,
 }
 
