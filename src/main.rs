@@ -1,4 +1,3 @@
-use mail_server::boot::migration::migrate_db_up;
 use mail_server::boot::server::Application;
 use mail_server::config::system_config::get_config;
 use mail_server::telemetry::{get_subscriber, init_subscriber};
@@ -8,8 +7,6 @@ use tracing::info;
 #[tokio::main]
 //todo 后续重构优化这里
 async fn main() -> std::io::Result<()> {
-    migrate_db_up().await.expect("migrate DB error");
-
     let subscriber = get_subscriber("mail-server".to_string(), "info".to_string());
     init_subscriber(subscriber);
 
