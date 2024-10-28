@@ -1,6 +1,7 @@
 use crate::domain::new_subscriber::NewSubscriber;
 
 use crate::common::common_response::CommonResponse;
+use crate::model::sea_orm_active_enums::StatusEnum;
 use crate::model::subscriptions;
 use actix_web::web::Form;
 use actix_web::{web, HttpResponse};
@@ -49,6 +50,7 @@ pub async fn insert_subscriber(
         email: ActiveValue::Set(new_subscriber.email.as_ref().to_owned()),
         username: ActiveValue::Set(new_subscriber.username.as_ref().to_string()),
         subscribed_at: ActiveValue::Set(DateTimeWithTimeZone::from(Utc::now())),
+        status: ActiveValue::Set(StatusEnum::Waiting),
     };
 
     let res = subscription_user.clone().insert(db.get_ref()).await?;

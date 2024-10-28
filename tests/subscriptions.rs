@@ -1,6 +1,9 @@
 use crate::helpers::helpers::start_server;
 use fake::faker::internet::en::{FreeEmail, Username};
 use fake::Fake;
+use wiremock::http::Method;
+use wiremock::matchers::{method, path};
+use wiremock::{Mock, ResponseTemplate};
 
 mod helpers;
 
@@ -43,5 +46,22 @@ async fn subscribe_returns_a_400_for_invalid_form_data() {
             "请求错误，与预期不符，错误信息：{}",
             error_message
         );
+    }
+}
+
+#[tokio::test]
+async fn subscribe_sends_a_confirmation_email_for_valid_data() {
+    let app = start_server().await;
+    let test_cases = vec![];
+
+    Mock::given(path("/email"))
+        .and(method(Method::POST))
+        .respond_with(ResponseTemplate::new(200))
+        .expect(1)
+        .mount(&app.email_server)
+        .await;
+
+    for request_body in test_cases {
+        app.post_subscriptions(request_body).await;
     }
 }
