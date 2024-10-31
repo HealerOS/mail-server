@@ -1,5 +1,6 @@
 use crate::domain::new_subscriber::NewSubscriber;
 
+use crate::biz::email_client::EmailClient;
 use crate::common::common_response::CommonResponse;
 use crate::model::sea_orm_active_enums::StatusEnum;
 use crate::model::subscriptions;
@@ -22,6 +23,7 @@ pub struct UserInfo {
 pub async fn subscribe(
     user_info: Form<UserInfo>,
     db: web::Data<DatabaseConnection>,
+    email_client: web::Data<EmailClient>,
 ) -> HttpResponse {
     let new_subscriber = match NewSubscriber::try_from(user_info) {
         Ok(subscriber) => subscriber,
@@ -31,18 +33,32 @@ pub async fn subscribe(
         }
     };
 
-    match insert_subscriber(new_subscriber, db.clone()).await {
+    match insert_subscriber(&new_subscriber, db).await {
         Ok(_) => HttpResponse::Ok().json(CommonResponse::success_response_without_data()),
         Err(e) => {
             error!("error: {}", e);
-            HttpResponse::InternalServerError().finish()
+            return HttpResponse::InternalServerError().finish();
         }
+    };
+
+    if email_client
+        .send_email(
+            &new_subscriber.email,
+            "Hello Subscriber".to_string(),
+            "https://www.baidu.com".to_string(),
+            "https://www.baidu.com".to_string(),
+        )
+        .await
+        .is_err()
+    {
+        return HttpResponse::InternalServerError().finish();
     }
+    HttpResponse::Ok().finish()
 }
 
 #[tracing::instrument(name = "正在保存订阅者到DB", skip(db))]
 pub async fn insert_subscriber(
-    new_subscriber: NewSubscriber,
+    new_subscriber: &NewSubscriber,
     db: web::Data<DatabaseConnection>,
 ) -> Result<(), DbErr> {
     let subscription_user = subscriptions::ActiveModel {

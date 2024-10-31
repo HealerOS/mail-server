@@ -1,6 +1,6 @@
-use crate::biz::email_client::EmailClint;
+use crate::biz::email_client::EmailClient;
 use crate::config::system_config::SystemConfig;
-use crate::routes::{health_check, subscribe};
+use crate::routes::{confirm, health_check, subscribe};
 use actix_web::dev::Server;
 use actix_web::{web, App, HttpServer};
 use sea_orm::Database;
@@ -37,7 +37,7 @@ impl Application {
             .expect("获取发送者email失败");
 
         let timeout = system_config.email_config.timeout();
-        let email_client = EmailClint::new(
+        let email_client = EmailClient::new(
             system_config.email_config.base_url,
             sender_email,
             system_config.email_config.authorization_token,
@@ -51,6 +51,7 @@ impl Application {
                 .wrap(TracingLogger::default())
                 .route("/health_check", web::get().to(health_check))
                 .route("/subscribe", web::post().to(subscribe))
+                .route("/confirm", web::get().to(confirm))
                 .app_data(db_connection.clone())
                 .app_data(email_clint.clone())
         })

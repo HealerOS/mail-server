@@ -4,7 +4,8 @@ use secrecy::{ExposeSecret, SecretString};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
-pub struct EmailClint {
+#[derive(Debug)]
+pub struct EmailClient {
     pub sender: SubscriberEmail,
     pub http_client: Client,
     pub base_url: String,
@@ -20,10 +21,10 @@ struct SendEmailRequest<'a> {
     text_body: &'a str,
 }
 
-impl EmailClint {
+impl EmailClient {
     pub async fn send_email(
         &self,
-        recipient: SubscriberEmail,
+        recipient: &SubscriberEmail,
         subject: String,
         html_content: String,
         text_content: String,
@@ -56,8 +57,8 @@ impl EmailClint {
         sender: SubscriberEmail,
         authorization_token: SecretString,
         timeout: Duration,
-    ) -> EmailClint {
-        EmailClint {
+    ) -> EmailClient {
+        EmailClient {
             http_client: Client::builder().timeout(timeout).build().unwrap(),
             base_url,
             sender,
@@ -68,7 +69,7 @@ impl EmailClint {
 
 #[cfg(test)]
 mod tests {
-    use crate::biz::email_client::{EmailClint, SendEmailRequest};
+    use crate::biz::email_client::{EmailClient, SendEmailRequest};
     use crate::domain::subscriber_email::SubscriberEmail;
     use claim::assert_ok;
     use fake::faker::internet::en::SafeEmail;
@@ -115,10 +116,10 @@ mod tests {
         assert_ok!(response);
     }
 
-    async fn setup_test_server() -> (MockServer, EmailClint) {
+    async fn setup_test_server() -> (MockServer, EmailClient) {
         let mock_server = MockServer::start().await;
         let sender = SubscriberEmail::parse(SafeEmail().fake()).unwrap();
-        let email_client = EmailClint::new(
+        let email_client = EmailClient::new(
             mock_server.uri(),
             sender,
             SecretString::new(Box::from("fake token".to_string())),
